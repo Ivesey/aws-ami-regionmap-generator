@@ -1,6 +1,6 @@
 #amimapgen
 ##usage:
-`amimapgen.py [-h] [-k KEYS] [-r REGION] [-n NAME] [-v] [-i INCLUDE | -e EXCLUDE] image`
+`amimapgen.py [-h] [-k KEYS] [-r REGION] [-n NAME] [-v] [-i INCLUDE | -e EXCLUDE] images`
 
 generates a CloudFormation region map for AMIs
 
