@@ -31,7 +31,7 @@ def main():
     parser = argparse.ArgumentParser(description='generates a CloudFormation region map for AMIs')
     parser.add_argument('images',
                         type=csv,
-                        help='comma-separated list of amis')
+                        help='comma-separated list of valid AMIs')
     parser.add_argument('-k', '--keys',
                         type=csv,
                         help='comma-separated list of map keys for images (default is AMIx)')
@@ -66,10 +66,10 @@ def main():
         current_image = conn.get_image(image)
         name = current_image.name
 
-        if args.keys is None:
-            key = 'AMI{}'.format(iteration + 1)
-        else:
+        try:
             key = args.keys[iteration]
+        except (IndexError, TypeError):
+            key = 'AMI{}'.format(iteration + 1)
 
         print_if_verbose('Got: "{}" in "{}"'.format(name, conn.region.name), args.verbose)
 
