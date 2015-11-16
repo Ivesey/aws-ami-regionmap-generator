@@ -29,8 +29,12 @@ DEFAULT_REGION = 'eu-west-1'
 def main():
     """generates the region map and dumps it as JSON"""
     parser = argparse.ArgumentParser(description='generates a CloudFormation region map for AMIs')
-    parser.add_argument('image',
-                        help='a valid AMI image id')
+    parser.add_argument('images',
+                        type=csv,
+                        help='comma-separated list of amis')
+    parser.add_argument('-k', '--keys',
+                        type=csv,
+                        help='comma-separated list of map keys for images (default is AMIx)')
     parser.add_argument('-r', '--region',
                         help='specify the region if "image" is not in your default region',
                         default=os.getenv('AWS_DEFAULT_REGION',
@@ -42,37 +46,45 @@ def main():
     parser.add_argument('-v', '--verbose',
                         help='verbose mode',
                         action='store_true')
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('-i', '--include',
+    include_exclude_group = parser.add_mutually_exclusive_group()
+    include_exclude_group.add_argument('-i', '--include',
                        type=csv,
                        help='comma-separated list of regions to include (default is all)')
-    group.add_argument('-e', '--exclude',
+    include_exclude_group.add_argument('-e', '--exclude',
                        type=csv,
                        help='comma-separated list of regions to exclude (default is none)')
 
     args = parser.parse_args()
 
     map_name = args.name
-    conn = boto.ec2.connect_to_region(args.region)
-    image = conn.get_image(args.image)
-    name = image.name
+    images = args.images
     result = {map_name : {}}
+    iteration = 0
 
-    print_if_verbose('Got: "{}" in "{}"'.format(name, conn.region.name), args.verbose)
+    for image in images:
+        conn = boto.ec2.connect_to_region(args.region)
+        current_image = conn.get_image(image)
+        name = current_image.name
 
-    for region in conn.get_all_regions():
-        if i_should_query_region(region.name, args.include, args.exclude):
-            conn = boto.ec2.connect_to_region(region.name)
-            images = conn.get_all_images(filters={'name':name})
-            for image in images:
-                if conn.region.name not in result[map_name]:
-                    result[map_name][conn.region.name] = {}
-                arch = '64'
-                if image.architecture != 'x86_64':
-                    arch = '32'
-                result[map_name][conn.region.name][arch] = image.id
-                print_if_verbose(
-                    'Got "{}" in "{}"'.format(image.id, conn.region.name), args.verbose)
+        if args.keys is None:
+            key = 'AMI{}'.format(iteration + 1)
+        else:
+            key = args.keys[iteration]
+
+        print_if_verbose('Got: "{}" in "{}"'.format(name, conn.region.name), args.verbose)
+
+        for region in conn.get_all_regions():
+            if i_should_query_region(region.name, args.include, args.exclude):
+                conn = boto.ec2.connect_to_region(region.name)
+                region_images = conn.get_all_images(filters={'name':name})
+                for region_image in region_images:
+                    if conn.region.name not in result[map_name]:
+                        result[map_name][conn.region.name] = {}
+
+                    result[map_name][conn.region.name][key] = region_image.id
+                    print_if_verbose(
+                        'Got "{}" in "{}"'.format(region_image.id, conn.region.name), args.verbose)
+        iteration += 1
 
     print(json.dumps(result, indent=4))
 
