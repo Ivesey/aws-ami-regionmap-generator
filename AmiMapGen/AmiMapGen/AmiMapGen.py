@@ -1,4 +1,4 @@
-﻿"""generates a CloudFormation region map for AMIs"""
+﻿"""generates a RegionMap for AMIs"""
 
 import boto3
 import json
